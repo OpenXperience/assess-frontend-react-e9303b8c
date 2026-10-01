@@ -1,0 +1,93 @@
+name: OpenExp Check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # continue-on-error is deliberate: a failing check is a result to report,
+      # not a workflow crash that reports nothing. The cost is that the job
+      # shows a green tick either way, so the summary below states the real
+      # outcome in the one place the student is looking (ADR-043).
+      - name: Run your acceptance checks (green tick below means the run finished, not that checks passed)
+        id: checks
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund vitest@^3 jsdom@^25 @testing-library/react@^16 @testing-library/user-event@^14 @vitejs/plugin-react@^4
+          mkdir -p "$(dirname "openexp/LoginForm.check.test.jsx")"
+          cat > "openexp/LoginForm.check.test.jsx" <<'OPENEXP_TEST_EOF'
+          import { afterEach, describe, expect, it } from 'vitest';
+          import { cleanup, render, screen } from '@testing-library/react';
+          import LoginForm from '../src/LoginForm.jsx';
+          
+          // Without this every render accumulates in document.body, so by the fourth
+          // test getByRole finds four buttons and throws on correct code.
+          afterEach(cleanup);
+          
+          describe('LoginForm', () => {
+            it('renders without crashing', () => {
+              expect(() => render(<LoginForm />)).not.toThrow();
+            });
+          
+            it('renders a labeled email input', () => {
+              render(<LoginForm />);
+              expect(screen.getByLabelText(/email/i)).toBeDefined();
+            });
+          
+            it('renders a labeled password input of type password', () => {
+              render(<LoginForm />);
+              const password = screen.getByLabelText(/password/i);
+              expect(password.getAttribute('type')).toBe('password');
+            });
+          
+            it('renders a submit button', () => {
+              render(<LoginForm />);
+              expect(screen.getByRole('button', { name: /submit|log ?in|sign ?in/i })).toBeDefined();
+            });
+          });
+          OPENEXP_TEST_EOF
+          cat > openexp-vitest.config.mjs <<'OPENEXP_CONFIG_EOF'
+          import react from '@vitejs/plugin-react';
+          export default { plugins: [react()], test: { environment: 'jsdom', globals: false } };
+          OPENEXP_CONFIG_EOF
+          npx vitest run "openexp/LoginForm.check.test.jsx" --reporter=json --outputFile=openexp-result.json --config openexp-vitest.config.mjs
+      - name: Tell the student what actually happened
+        if: always()
+        run: |
+          if [ "${{ steps.checks.outcome }}" = "success" ]; then
+            echo "## Your checks passed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Everything this task asked for is in place." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Some checks did not pass" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The green tick on this run means the run finished, not that your work passed — OpenExp needs the run to complete either way so it can read the result." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Open the **Run your acceptance checks** step above to see which ones failed. OpenExp will show you the same list." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Summarise the run
+        if: always()
+        run: |
+          COUNT=$(git rev-list --count origin/${{ github.base_ref }}..HEAD || echo 0)
+          SHORT=$(git log origin/${{ github.base_ref }}..HEAD --pretty=%s | awk 'length($0) < 15' | wc -l | tr -d ' ')
+          mkdir -p openexp-out
+          cp openexp-result.json openexp-out/ 2>/dev/null || echo 'null' > openexp-out/openexp-result.json
+          printf '{"runs":%s,"commits":%s,"shortMessages":%s}' \
+            "${{ steps.checks.outcome == 'success' }}" "$COUNT" "${SHORT:-0}" \
+            > openexp-out/summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openexp-result
+          path: openexp-out/
