@@ -52,8 +52,13 @@ body {
   cursor: pointer;
 }
 
-.login-form__status {
+.login-form__error {
   margin: 0;
   font-size: 0.875rem;
-  color: #57606a;
+  color: #b42318;
+}
+
+.login-form button:disabled {
+  background: #a9b4c0;
+  cursor: not-allowed;
 }
