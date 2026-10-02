@@ -76,13 +76,65 @@ describe('LoginForm', () => {
   });
 
   it('reports the entered credentials on submit', async () => {
-    const onSubmit = vi.fn();
-    render(<LoginForm onSubmit={onSubmit} />);
+    const onLogin = vi.fn();
+    render(<LoginForm onLogin={onLogin} />);
 
     await fillIn(/email/i, 'user@example.com');
     await fillIn(/password/i, 'hunter22');
     await userEvent.click(getSubmitButton());
 
-    expect(onSubmit).toHaveBeenCalledWith({ email: 'user@example.com', password: 'hunter22' });
+    expect(onLogin).toHaveBeenCalledWith({ email: 'user@example.com', password: 'hunter22' });
+  });
+
+  it('keeps the inputs controlled by React state', async () => {
+    render(<LoginForm />);
+    const emailInput = screen.getByLabelText(/email/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+
+    expect(emailInput.value).toBe('');
+    expect(passwordInput.value).toBe('');
+
+    await fillIn(/email/i, 'user@example.com');
+    await fillIn(/password/i, 'hunter22');
+
+    expect(emailInput.value).toBe('user@example.com');
+    expect(passwordInput.value).toBe('hunter22');
+  });
+
+  it('prevents the default page reload on submit', async () => {
+    const { container } = render(<LoginForm />);
+    const submitEvents = [];
+    // React 18 delegates listeners to the root container, so a listener added
+    // here after mount runs after the component's own submit handler.
+    container.addEventListener('submit', (event) => submitEvents.push(event.defaultPrevented));
+
+    await fillIn(/email/i, 'user@example.com');
+    await fillIn(/password/i, 'hunter22');
+    await userEvent.click(getSubmitButton());
+
+    expect(submitEvents).toEqual([true]);
+  });
+
+  it('shows a success state after a successful submission', async () => {
+    render(<LoginForm />);
+    expect(screen.queryByRole('status')).toBeNull();
+
+    await fillIn(/email/i, 'user@example.com');
+    await fillIn(/password/i, 'hunter22');
+    await userEvent.click(getSubmitButton());
+
+    expect(screen.getByRole('status')).toBeDefined();
+    expect(screen.getByText(/success/i)).toBeDefined();
+  });
+
+  it('clears the success state once the user edits a field again', async () => {
+    render(<LoginForm />);
+    await fillIn(/email/i, 'user@example.com');
+    await fillIn(/password/i, 'hunter22');
+    await userEvent.click(getSubmitButton());
+    expect(screen.getByRole('status')).toBeDefined();
+
+    await fillIn(/password/i, 'x');
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });

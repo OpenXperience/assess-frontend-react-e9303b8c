@@ -58,7 +58,18 @@ body {
   color: #b42318;
 }
 
+.login-form__success {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #1a7f37;
+}
+
 .login-form button:disabled {
   background: #a9b4c0;
   cursor: not-allowed;
+}
+.app__last-login {
+  max-width: 22rem;
+  font-size: 0.875rem;
+  color: #57606a;
 }

@@ -1,13 +1,13 @@
-# Add Form Validation
+# Wire Up State & Submission
 
-Extend `LoginForm` so it validates email format and a minimum password length (8 characters), shows inline error messages, and disables the submit button until both fields are valid.
+Make the inputs controlled, prevent default page reload on submit, and call a provided `onLogin(values)` prop with `{ email, password }` when the form is submitted successfully. Show some success indicator after submission.
 
 ## Done when
 
-- An invalid email shows an error mentioning "email".
-- A password under 8 characters shows an error mentioning length.
-- Submit is disabled while invalid.
-- Submit is enabled once both fields pass.
+- The inputs are controlled.
+- Submitting prevents the default page reload.
+- `onLogin` is called with `{ email, password }`.
+- A success state is visible afterward.
 
 ## How to submit
 

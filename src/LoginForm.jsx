@@ -25,10 +25,11 @@ function passwordErrorMessage(value) {
   return null;
 }
 
-export default function LoginForm({ onSubmit }) {
+export default function LoginForm({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   function markTouched(field) {
     setTouched((previous) => ({ ...previous, [field]: true }));
@@ -36,8 +37,9 @@ export default function LoginForm({ onSubmit }) {
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (onSubmit) {
-      onSubmit({ email: email.trim(), password });
+    setIsSubmitted(true);
+    if (onLogin) {
+      onLogin({ email: email.trim(), password });
     }
   }
 
@@ -66,6 +68,7 @@ export default function LoginForm({ onSubmit }) {
           onChange={(event) => {
             setEmail(event.target.value);
             markTouched('email');
+            setIsSubmitted(false);
           }}
           onBlur={() => markTouched('email')}
         />
@@ -90,6 +93,7 @@ export default function LoginForm({ onSubmit }) {
           onChange={(event) => {
             setPassword(event.target.value);
             markTouched('password');
+            setIsSubmitted(false);
           }}
           onBlur={() => markTouched('password')}
         />
@@ -103,6 +107,12 @@ export default function LoginForm({ onSubmit }) {
       <button type="submit" disabled={isSubmitDisabled}>
         Submit
       </button>
+
+      {isSubmitted && (
+        <p className="login-form__success" role="status">
+          Signed in successfully.
+        </p>
+      )}
     </form>
   );
 }
