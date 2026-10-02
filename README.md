@@ -1,14 +1,13 @@
-# Build a Login Form Component
+# Add Form Validation
 
-Build a React component `LoginForm` that renders an email field, a password field, and a submit button.
+Extend `LoginForm` so it validates email format and a minimum password length (8 characters), shows inline error messages, and disables the submit button until both fields are valid.
 
 ## Done when
 
-- A labeled email input.
-- A labeled password input (type=password).
-- A submit button.
-- The component is exported as default from `src/LoginForm.jsx`.
-- It renders without crashing.
+- An invalid email shows an error mentioning "email".
+- A password under 8 characters shows an error mentioning length.
+- Submit is disabled while invalid.
+- Submit is enabled once both fields pass.
 
 ## How to submit
 

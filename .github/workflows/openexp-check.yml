@@ -24,35 +24,53 @@ jobs:
           set -euo pipefail
           npm install --no-audit --no-fund
           npm install --no-save --no-audit --no-fund vitest@^3 jsdom@^25 @testing-library/react@^16 @testing-library/user-event@^14 @vitejs/plugin-react@^4
-          mkdir -p "$(dirname "openexp/LoginForm.check.test.jsx")"
-          cat > "openexp/LoginForm.check.test.jsx" <<'OPENEXP_TEST_EOF'
+          mkdir -p "$(dirname "openexp/LoginFormValidation.check.test.jsx")"
+          cat > "openexp/LoginFormValidation.check.test.jsx" <<'OPENEXP_TEST_EOF'
           import { afterEach, describe, expect, it } from 'vitest';
           import { cleanup, render, screen } from '@testing-library/react';
+          import userEvent from '@testing-library/user-event';
           import LoginForm from '../src/LoginForm.jsx';
           
-          // Without this every render accumulates in document.body, so by the fourth
-          // test getByRole finds four buttons and throws on correct code.
           afterEach(cleanup);
           
-          describe('LoginForm', () => {
-            it('renders without crashing', () => {
-              expect(() => render(<LoginForm />)).not.toThrow();
+          const submit = () => screen.getByRole('button', { name: /submit|log ?in|sign ?in/i });
+          
+          describe('LoginForm validation', () => {
+            it('shows an email error for an invalid address', async () => {
+              const user = userEvent.setup();
+              render(<LoginForm />);
+              await user.type(screen.getByLabelText(/email/i), 'not-an-email');
+              await user.tab();
+              // The field's own <label> also matches /email/i, so a bare getByText finds
+              // two elements and throws on correct code. Look for a mention of email
+              // that is not the label, without dictating the wording.
+              const mentions = screen
+                .getAllByText(/email/i)
+                .filter((el) => el.tagName !== 'LABEL');
+              expect(mentions.length).toBeGreaterThan(0);
             });
           
-            it('renders a labeled email input', () => {
+            it('shows a length error for a short password', async () => {
+              const user = userEvent.setup();
               render(<LoginForm />);
-              expect(screen.getByLabelText(/email/i)).toBeDefined();
+              await user.type(screen.getByLabelText(/password/i), 'short');
+              await user.tab();
+              expect(screen.getByText(/8|length|character/i)).toBeDefined();
             });
           
-            it('renders a labeled password input of type password', () => {
+            it('keeps submit disabled while invalid', async () => {
+              const user = userEvent.setup();
               render(<LoginForm />);
-              const password = screen.getByLabelText(/password/i);
-              expect(password.getAttribute('type')).toBe('password');
+              await user.type(screen.getByLabelText(/email/i), 'nope');
+              expect(submit().hasAttribute('disabled')).toBe(true);
             });
           
-            it('renders a submit button', () => {
+            it('enables submit once both fields are valid', async () => {
+              const user = userEvent.setup();
               render(<LoginForm />);
-              expect(screen.getByRole('button', { name: /submit|log ?in|sign ?in/i })).toBeDefined();
+              await user.type(screen.getByLabelText(/email/i), 'ada@example.com');
+              await user.type(screen.getByLabelText(/password/i), 'analytical1843');
+              expect(submit().hasAttribute('disabled')).toBe(false);
             });
           });
           OPENEXP_TEST_EOF
@@ -60,7 +78,7 @@ jobs:
           import react from '@vitejs/plugin-react';
           export default { plugins: [react()], test: { environment: 'jsdom', globals: false } };
           OPENEXP_CONFIG_EOF
-          npx vitest run "openexp/LoginForm.check.test.jsx" --reporter=json --outputFile=openexp-result.json --config openexp-vitest.config.mjs
+          npx vitest run "openexp/LoginFormValidation.check.test.jsx" --reporter=json --outputFile=openexp-result.json --config openexp-vitest.config.mjs
       - name: Tell the student what actually happened
         if: always()
         run: |
